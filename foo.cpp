@@ -220,11 +220,13 @@ void Foo::myDrawMatches(const cv::Mat &in, const std::vector<cv::KeyPoint> &keyp
     {
         if( matchesMask.empty() || matchesMask[m])
         {
+            color = isRandMatchColor ? cv::Scalar( rng(256), rng(256), rng(256) ) : matchColor;
+
             int index1 = matches1to2[m].queryIdx;
             int index2 = matches1to2[m].trainIdx;
 
             CV_Assert(index1 >= 0 && index1 < static_cast<int>(keypoints1.size()));
-            CV_Assert(index2 && index2 < static_cast<int>(keypoints2.size()));
+            CV_Assert(index2 >= 0 && index2 < static_cast<int>(keypoints2.size()));
             //两个关键点的位置
             cv::Point center1(cvRound(keypoints1[index1].pt.x * draw_multiplier),
                               cvRound(keypoints1[index1].pt.y * draw_multiplier));
@@ -247,5 +249,4 @@ void Foo::myDrawMatches(const cv::Mat &in, const std::vector<cv::KeyPoint> &keyp
                      color,1,cv::LINE_AA,draw_shift_bits);
         }
     }
-    cv::imshow("res",out);
 }
