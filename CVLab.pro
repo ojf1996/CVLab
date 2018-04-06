@@ -47,10 +47,5 @@ INCLUDEPATH += \
     D:\opencvlib32withExtra\install\include\opencv2
 
 LIBS += \
-    D:\opencvlib32withExtra\install\x86\mingw\bin\libopencv_highgui310.dll\
-    D:\opencvlib32withExtra\install\x86\mingw\bin\libopencv_features2d310.dll\
-    D:\opencvlib32withExtra\install\x86\mingw\bin\libopencv_imgproc310.dll\
-    D:\opencvlib32withExtra\install\x86\mingw\bin\libopencv_xfeatures2d310.dll\
-    D:\opencvlib32withExtra\install\x86\mingw\bin\libopencv_imgproc310.dll\
-    D:\opencvlib32withExtra\install\x86\mingw\bin\libopencv_imgcodecs310.dll
+    D:\opencvlib32withExtra\install\x86\mingw\bin\libopencv_*.dll
 
