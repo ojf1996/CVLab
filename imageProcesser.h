@@ -20,6 +20,7 @@ public slots:
 signals:
     void finishMatch(const QImage& out);
     void finishDetectPhoto1(const QImage& out);
+    void finishDetectPhoto2(const QImage& out);
 };
 
 #endif // IMAGEPROCESSER_H

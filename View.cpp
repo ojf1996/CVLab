@@ -90,6 +90,7 @@ View::View(QWidget *parent) :
     connect(this,SIGNAL(ORBTest(std::string,std::string)),processer,SLOT(ORBTest(std::string,std::string)));
     connect(processer,SIGNAL(finishMatch(const QImage&)),this,SLOT(loadResultPhoto(const QImage&)));
     connect(processer,SIGNAL(finishDetectPhoto1(const QImage&)),this,SLOT(updatePhoto1(const QImage&)));
+    connect(processer,SIGNAL(finishDetectPhoto2(const QImage&)),this,SLOT(updatePhoto2(const QImage&)));
 }
 //--------------------------------------------------
 void View::loadPhoto1()
@@ -210,15 +211,23 @@ void View::updatePhoto1(const QImage & res)
 {
     if(res.isNull()){
         QMessageBox::critical(this,"发生了错误","图片处理失败");
-        resPhoto = QImage();
-        resultBtn->setVisible(false);
         return;
     }
 
     photo1 = res.copy();
     emit showPhoto1();
 }
+//-----------------------------------------------------
+void View::updatePhoto2(const QImage & res)
+{
+    if(res.isNull()){
+        QMessageBox::critical(this,"发生了错误","图片处理失败");
+        return;
+    }
 
+    photo2 = res.copy();
+    emit showPhoto2();
+}
 //-----------------------------------------------------
 void View::showResultPhoto()
 {

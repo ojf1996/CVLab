@@ -78,6 +78,7 @@ protected slots:
 
     //@remark 更新得出关键点和描述出之后的图片
     void updatePhoto1(const QImage&);
+    void updatePhoto2(const QImage&);
 
     //@remark 关闭标签
     void closePhoto1();
