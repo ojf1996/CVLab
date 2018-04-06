@@ -35,8 +35,28 @@ View::View(QWidget *parent) :
 
     //添加操作的菜单
     OpMenu = menuBar()->addMenu("&操作");
-    HomomorphicFilteringMenu = new QAction(tr("测试"),this);
-    OpMenu->addAction(HomomorphicFilteringMenu);
+    ORBMenu = new QMenu(tr("ORB特征提取与匹配"),this);
+    OpMenu->addMenu(ORBMenu);
+    SIFTMenu = new QMenu(tr("SIFT特征提取与匹配"),this);
+    OpMenu->addMenu(SIFTMenu);
+    SURFMenu = new QMenu(tr("SURF特征提取与匹配"),this);
+    OpMenu->addMenu(SURFMenu);
+
+    //添加操作
+    ORBWith2NN = new QAction(tr("进行野点剔除"),this);
+    ORBWithout2NN = new QAction(tr("不进行野点剔除"),this);
+    ORBMenu->addAction(ORBWith2NN);
+    ORBMenu->addAction(ORBWithout2NN);
+
+    SIFTWith2NN = new QAction(tr("进行野点剔除"),this);
+    SIFTWithout2NN = new QAction(tr("不进行野点剔除"),this);
+    SIFTMenu->addAction(SIFTWith2NN);
+    SIFTMenu->addAction(SIFTWithout2NN);
+
+    SURFWith2NN = new QAction(tr("进行野点剔除"),this);
+    SURFWithout2NN = new QAction(tr("不进行野点剔除"),this);
+    SURFMenu->addAction(SURFWith2NN);
+    SURFMenu->addAction(SURFWithout2NN);
 
     //中央布局
     QWidget* temp = new QWidget();
@@ -86,8 +106,14 @@ View::View(QWidget *parent) :
     connect(resultBtn,SIGNAL(clicked(bool)),this,SLOT(showResultPhoto()));
 
     //图片处理信号
-    connect(HomomorphicFilteringMenu,SIGNAL(triggered(bool)),this,SLOT(test()));
-    connect(this,SIGNAL(ORBTest(std::string,std::string)),processer,SLOT(ORBTest(std::string,std::string)));
+    connect(ORBWith2NN,SIGNAL(triggered(bool)),this,SLOT(startORBWith2NN()));
+    connect(ORBWithout2NN,SIGNAL(triggered(bool)),this,SLOT(startORBWithout2NN()));
+    connect(SIFTWith2NN,SIGNAL(triggered(bool)),this,SLOT(startSIFTWith2NN()));
+    connect(SIFTWithout2NN,SIGNAL(triggered(bool)),this,SLOT(startSIFTWithout2NN()));
+    connect(SURFWith2NN,SIGNAL(triggered(bool)),this,SLOT(startSURFWith2NN()));
+    connect(SURFWithout2NN,SIGNAL(triggered(bool)),this,SLOT(startSURFWithout2NN()));
+    //进行传递
+    connect(this,SIGNAL(startMatch(std::string,std::string,int,bool)),processer,SLOT(matchTest(std::string,std::string,int,bool)));
     connect(processer,SIGNAL(finishMatch(const QImage&)),this,SLOT(loadResultPhoto(const QImage&)));
     connect(processer,SIGNAL(finishDetectPhoto1(const QImage&)),this,SLOT(updatePhoto1(const QImage&)));
     connect(processer,SIGNAL(finishDetectPhoto2(const QImage&)),this,SLOT(updatePhoto2(const QImage&)));
@@ -234,12 +260,62 @@ void View::showResultPhoto()
     emit showPhoto(3);
 }
 //-----------------------------------------------------
-void View::test()
+void View::startORBWith2NN()
 {
     if(file1.isNull() || file2.isNull())
     {
         QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
         return;
     }
-    emit ORBTest(file1.toStdString(),file2.toStdString());
+    emit startMatch(file1.toStdString(),file2.toStdString(),1,true);
+}
+//----------------------------------------------------
+void View::startORBWithout2NN()
+{
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startMatch(file1.toStdString(),file2.toStdString(),1,false);
+}
+//-----------------------------------------------------
+void View::startSIFTWith2NN()
+{
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startMatch(file1.toStdString(),file2.toStdString(),2,true);
+}
+//----------------------------------------------------
+void View::startSIFTWithout2NN()
+{
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startMatch(file1.toStdString(),file2.toStdString(),2,false);
+}
+//-----------------------------------------------------
+void View::startSURFWith2NN()
+{
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startMatch(file1.toStdString(),file2.toStdString(),3,true);
+}
+//----------------------------------------------------
+void View::startSURFWithout2NN()
+{
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startMatch(file1.toStdString(),file2.toStdString(),3,false);
 }

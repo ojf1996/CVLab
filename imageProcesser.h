@@ -16,7 +16,7 @@ public:
     explicit imageProcesser(QObject* parent = nullptr);
     ~imageProcesser();
 public slots:
-    void ORBTest(std::string,std::string);
+    void matchTest(std::string,std::string,int,bool);
 signals:
     void finishMatch(const QImage& out);
     void finishDetectPhoto1(const QImage& out);

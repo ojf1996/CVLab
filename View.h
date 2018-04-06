@@ -40,14 +40,24 @@ protected:
     QAction *File1CloseMenu;
     QAction *File2CloseMenu;
 
-    //图像处理菜单
-    QAction *HomomorphicFilteringMenu;
-
+    //进行ORB特征检测
+    QAction *ORBWithout2NN;
+    QAction *ORBWith2NN;
+    //进行SIFT特征检测
+    QAction *SIFTWithout2NN;
+    QAction *SIFTWith2NN;
+    //进行SURF特征检测
+    QAction *SURFWithout2NN;
+    QAction *SURFWith2NN;
 protected:
     //菜单栏
     //文件菜单
     QMenu *FileMenu;
     QMenu *OpMenu;
+    //操作菜单
+    QMenu *ORBMenu;
+    QMenu *SIFTMenu;
+    QMenu *SURFMenu;
     //图片
     QLabel* Photo;
     QPushButton *photo1Btn;
@@ -59,7 +69,7 @@ signals:
     //@remark 更新图片的信号
     //@param which表明展示某张图片，1表示第一张，如此类推
     void showPhoto(int which);
-    void ORBTest(std::string, std::string);
+    void startMatch(std::string, std::string,int kind,bool is2NN);
 
 protected slots:
     //@remark 读取图片
@@ -85,7 +95,12 @@ protected slots:
     void closePhoto2();
 
     //@remark test
-    void test();
+    void startORBWith2NN();
+    void startORBWithout2NN();
+    void startSIFTWith2NN();
+    void startSIFTWithout2NN();
+    void startSURFWith2NN();
+    void startSURFWithout2NN();
 };
 
 #endif // VIEW_H
