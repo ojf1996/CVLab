@@ -1,4 +1,6 @@
 ﻿#include "View.h"
+#include <qDebug>
+#include <QPaintEvent>
 #include <QFileDialog>
 #include <QLabel>
 #include <QPixmap>
@@ -14,7 +16,11 @@
 View::View(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::View),
-    processer(new imageProcesser(this))
+    processer(new imageProcesser(this)),
+    _width(600),
+    _height(400),
+    photo1(QImage()),
+    currPhoto(&photo1)
 {
     ui->setupUi(this);
     //重置大小
@@ -67,7 +73,7 @@ View::View(QWidget *parent) :
 
     //添加图片展示区域
     Photo = new QLabel(this);
-    Photo->setFixedSize(QSize(600,400));
+    Photo->resize(QSize(int(600/1.2),int(500/1.2)));
     Photo->setObjectName("PhotoLabel");
     Photo->setAlignment(Qt::AlignCenter);
 
@@ -169,16 +175,20 @@ void View::updatePhotoLabel(int which)
 {
     if(which == 1)
     {
-        Photo->setPixmap(QPixmap::fromImage(photo1).scaled(QSize(600,600),Qt::KeepAspectRatio));
+        currPhoto = &photo1;
+        Photo->setPixmap(QPixmap::fromImage(photo1).scaled(QSize(_width,_height),Qt::KeepAspectRatio));
     }
     else if(which == 2)
     {
-        Photo->setPixmap(QPixmap::fromImage(photo2).scaled(QSize(600,600),Qt::KeepAspectRatio));
+        currPhoto = &photo2;
+        Photo->setPixmap(QPixmap::fromImage(photo2).scaled(QSize(_width,_height),Qt::KeepAspectRatio));
     }
     else if(which == 3)
     {
-        if(!resPhoto.isNull())
-            Photo->setPixmap(QPixmap::fromImage(resPhoto).scaled(QSize(600,600),Qt::KeepAspectRatio));
+        if(!resPhoto.isNull()){
+            currPhoto = &resPhoto;
+            Photo->setPixmap(QPixmap::fromImage(resPhoto).scaled(QSize(_width,_height),Qt::KeepAspectRatio));
+        }
     }
     else
     {
@@ -217,6 +227,21 @@ void View::closePhoto2()
 View::~View()
 {
     delete ui;
+}
+
+void View::paintEvent(QPaintEvent* event)
+{
+    qDebug()<<_width<<"  "<<_height<<"\n";
+    _width =int(size().width() / 1.2);
+    _height =int(size().height() / 1.2);
+    Photo->resize(QSize(_width,_height));
+    if(!currPhoto->isNull())
+        Photo->setPixmap(QPixmap::fromImage(*currPhoto).scaled(QSize(_width,_height),Qt::KeepAspectRatio));
+    Photo->move(int(size().width() * (1 - 1/ 1.2f) * 0.5),30);
+    photo1Btn->move(Photo->pos().x(),_height + Photo->pos().y());
+    photo2Btn->move(photo1Btn->pos().x()+photo1Btn->size().width(),_height + Photo->pos().y());
+    resultBtn->move(photo2Btn->pos().x()+photo2Btn->size().width(),_height + Photo->pos().y());
+    QMainWindow::paintEvent(event);
 }
 //------------------------------------------------------
 void View::loadResultPhoto(const QImage& res)

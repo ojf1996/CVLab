@@ -21,6 +21,8 @@ public:
     explicit View(QWidget *parent = 0);
     ~View();
 
+public slots:
+    void paintEvent(QPaintEvent *event);
 private:
     Ui::View *ui;
 
@@ -32,6 +34,7 @@ protected:
     QImage photo1;
     QImage photo2;
     QImage resPhoto;
+    QImage* currPhoto;
 
 protected:
     //打开文件菜单的各种操作
@@ -65,6 +68,9 @@ protected:
     QPushButton *resultBtn;
 
     imageProcesser *processer;
+protected:
+    int _width;
+    int _height;
 signals:
     //@remark 更新图片的信号
     //@param which表明展示某张图片，1表示第一张，如此类推
