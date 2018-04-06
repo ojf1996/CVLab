@@ -18,7 +18,7 @@ View::View(QWidget *parent) :
 {
     ui->setupUi(this);
     //重置大小
-    this->resize(800,600);
+    this->resize(620,500);
 
     //添加打开文件的菜单
     FileMenu = menuBar()->addMenu("&文件");
