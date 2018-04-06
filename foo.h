@@ -36,12 +36,17 @@ public:
     //@param keypoint1是第一张图提取的特征点
     //@param keypoint2是第二张图提取的特征点
     //@param ransacReprojThreshold是循环的阀值
-    static void ransac(cv::Mat &image01, cv::Mat &image02, cv::Mat &out,
-                std::vector<cv::DMatch> &matches, std::vector<cv::KeyPoint> &keyPoint1,
-                std::vector<cv::KeyPoint>& keyPoint2, int ransacReprojThreshold = 5);
+    static void ransac(std::vector<cv::DMatch> &matches, std::vector<cv::KeyPoint> &keyPoint1,
+                std::vector<cv::KeyPoint>& keyPoint2, std::vector<char>& matchesMask,int ransacReprojThreshold = 5);
 
     //@remark 用于画出图片关键点的梯度方向
     static void myDrawKeypoint(const cv::Mat& img, const std::vector<cv::KeyPoint>& keypoints,cv::Mat& out, const cv::Scalar& color =  cv::Scalar::all(-1));
+
+    //@remark 用于画出真正匹配的点对
+    static void myDrawMatches(const cv::Mat& in,const std::vector<cv::KeyPoint>& keypoints1,
+                              const cv::Mat& in2,const std::vector<cv::KeyPoint>& keypoints2,
+                              const std::vector<cv::DMatch>& matches1to2,cv::Mat& out,
+                              const std::vector<char>& matchesMask,const cv::Scalar& matchColor = cv::Scalar::all((-1)));
 };
 
 

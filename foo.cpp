@@ -1,12 +1,13 @@
 ﻿#include "foo.h"
 #include <QDebug>
 
+const int draw_shift_bits = 4;
+const int draw_multiplier = 1 << draw_shift_bits;
+
+
 //------------------------------------------------------
 static void _drawKeypoint(cv::Mat& img,const cv::KeyPoint&p, const cv::Scalar& color)
 {
-    const int draw_shift_bits = 4;
-    const int draw_multiplier = 1 << draw_shift_bits;
-
     cv::Point center( cvRound(p.pt.x * draw_multiplier), cvRound(p.pt.y * draw_multiplier));
 
     int radius = cvRound(p.size/2 * draw_multiplier);
@@ -129,9 +130,8 @@ void Foo::_2nnMatch(cv::InputArray queryDescriptors, cv::InputArray trainDescrip
     }
 }
 //--------------------------------------------------------------
-void Foo::ransac(cv::Mat &image01, cv::Mat &image02, cv::Mat &out,
-                 std::vector<cv::DMatch> &matches, std::vector<cv::KeyPoint> &keyPoint1,
-                 std::vector<cv::KeyPoint> &keyPoint2, int ransacReprojThreshold)
+void Foo::ransac(std::vector<cv::DMatch> &matches, std::vector<cv::KeyPoint> &keyPoint1,
+                 std::vector<cv::KeyPoint> &keyPoint2, std::vector<char>& matchesMask, int ransacReprojThreshold)
 {
         std::vector<int> queryIdxs(matches.size()), trainIdxs(matches.size());
         for (size_t i = 0; i < matches.size(); i++)
@@ -149,7 +149,7 @@ void Foo::ransac(cv::Mat &image01, cv::Mat &image02, cv::Mat &out,
 
 
         H12 = cv::findHomography(cv::Mat(points1), cv::Mat(points2), CV_RANSAC, ransacReprojThreshold);
-        std::vector<char> matchesMask(matches.size(), 0);
+        matchesMask.reserve(matches.size());
         cv::Mat points1t;
         cv::perspectiveTransform(cv::Mat(points1), points1t, H12);
         for (size_t i1 = 0; i1 < points1.size(); i1++)  //保存inliers
@@ -159,9 +159,6 @@ void Foo::ransac(cv::Mat &image01, cv::Mat &image02, cv::Mat &out,
                 matchesMask[i1] = 1;
             }
         }
-        cv::Mat match_img2;   //滤除outliers
-        cv::drawMatches(image01, keyPoint1, image02, keyPoint2, matches, match_img2, cv::Scalar(0, 0, 255), cv::Scalar::all(-1), matchesMask);
-        out = match_img2.clone();
 }
 //---------------------------------------------------------------------
 void Foo::myDrawKeypoint(const cv::Mat& img, const std::vector<cv::KeyPoint>& keypoints,cv::Mat& outImage, const cv::Scalar& _color)
@@ -183,4 +180,72 @@ void Foo::myDrawKeypoint(const cv::Mat& img, const std::vector<cv::KeyPoint>& ke
         cv::Scalar color = isDIYColor ? cv::Scalar(255,255,255) : _color;
         _drawKeypoint( outImage, *it, color);
     }
+}
+//----------------------------------------------------------------------
+void Foo::myDrawMatches(const cv::Mat &in, const std::vector<cv::KeyPoint> &keypoints1,
+                        const cv::Mat &in2, const std::vector<cv::KeyPoint> &keypoints2,
+                        const std::vector<cv::DMatch> &matches1to2, cv::Mat &out,
+                        const std::vector<char> &matchesMask,const cv::Scalar &matchColor)
+{
+    cv::RNG& rng = cv::theRNG();
+    bool isRandMatchColor = matchColor == cv::Scalar::all(-1);
+    cv::Scalar color = isRandMatchColor ? cv::Scalar( rng(256), rng(256), rng(256) ) : matchColor;
+
+    qDebug()<<"=======================";
+    //判断mask大小应该与matches的大小一致
+    if( !matchesMask.empty() && matchesMask.size() == matches1to2.size() )
+        return;
+
+    qDebug()<<"\n=======================";
+    cv::Size outSize = cv::Size(in.size().width + in2.size().width,
+                                MAX(in.size().height,in2.size().height));
+    //两张图片整合
+    out.create(outSize,CV_MAKETYPE(in.depth(),3));
+    //两张临时图片，分别复制in,in2的数据
+    cv::Mat out1 = out(cv::Rect(0,0,in.size().width,in.size().height)),
+            out2 = out(cv::Rect(in.size().width,0,in2.size().width,in2.size().height));
+
+    //假如是灰度图，需要统一转成BRG形式
+    if(in.type() == CV_8U)
+        cv::cvtColor(in,out1,cv::COLOR_GRAY2BGR);
+    else
+        in.copyTo(out1);
+
+    if(in2.type() == CV_8U)
+        cv::cvtColor(in2,out2,cv::COLOR_GRAY2BGR);
+    else
+        in2.copyTo(out2);
+
+    for(size_t m = 0; m < matches1to2.size(); m++)
+    {
+        if( matchesMask.empty() || matchesMask[m])
+        {
+            int index1 = matches1to2[m].queryIdx;
+            int index2 = matches1to2[m].trainIdx;
+
+            CV_Assert(index1 >= 0 && index1 < static_cast<int>(keypoints1.size()));
+            CV_Assert(index2 && index2 < static_cast<int>(keypoints2.size()));
+            //两个关键点的位置
+            cv::Point center1(cvRound(keypoints1[index1].pt.x * draw_multiplier),
+                              cvRound(keypoints1[index1].pt.y * draw_multiplier));
+
+            cv::Point center2(cvRound(keypoints2[index2].pt.x * draw_multiplier),
+                              cvRound(keypoints2[index2].pt.y * draw_multiplier));
+            //以两个关键点的尺度为正方形的边长圆
+            int radius1 = cvRound(keypoints1[index1].size / 2 * draw_multiplier);
+            int radius2 = cvRound(keypoints1[index2].size / 2 * draw_multiplier);
+            cv::circle(out1,center1,radius1,color,1,cv::LINE_AA,draw_shift_bits);
+            cv::circle(out2,center2,radius2,color,1,cv::LINE_AA,draw_shift_bits);
+
+            //两个关键点连线
+            cv::Point2f dpt2 =
+                    cv::Point2f(std::min(keypoints2[index2].pt.x + out1.size().width,float(out.size().width - 1)),
+                                keypoints2[index2].pt.y);
+            cv::line(out,
+                     cv::Point(center1.x,center1.y),
+                     cv::Point(cvRound(dpt2.x * draw_multiplier),cvRound(dpt2.y * draw_multiplier)),
+                     color,1,cv::LINE_AA,draw_shift_bits);
+        }
+    }
+    cv::imshow("res",out);
 }
