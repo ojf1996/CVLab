@@ -4,6 +4,96 @@
 const int draw_shift_bits = 4;
 const int draw_multiplier = 1 << draw_shift_bits;
 
+struct Corners
+{
+    cv::Point2f left_top;
+    cv::Point2f left_bottom;
+    cv::Point2f right_top;
+    cv::Point2f right_bottom;
+};
+
+//-----------------------------------------------------
+//@remark 计算经过H矩阵投影转换之后的对应图像的四个角的坐标
+//@param dst即为目标图像
+static void calcNewPosAfterH(const cv::Mat& H, const cv::Mat& src,Corners & corners)
+{
+    double v2[] = {0,0,1};//原图左上角，注意由于H是3*3矩阵，所以这里采用齐次坐标，第三位1表示是点，若为0说明是向量
+    double v1[3] = {0}; //目标坐标
+    cv::Mat V2 = cv::Mat(3,1,CV_64FC1,v2);// 转为Mat，方便计算
+    cv::Mat V1 = cv::Mat(3,1,CV_64FC1,v1);
+
+    V1 = H * V2;// 简单粗暴
+    corners.left_top.x = v1[0]/ v1[2]; // 第三位不为1.f，这一次除法我们称之为 nonuniform foreshortening
+    corners.left_top.y = v1[1] / v1[2];
+    //计算左下角（0，src.cols,1）
+    v2[0] = 0;
+    v2[1] = src.cols;
+    v2[2] = 1;
+    V2 = cv::Mat(3,1,CV_64FC1,v2);// 转为Mat，方便计算
+    V1 = cv::Mat(3,1,CV_64FC1,v1);
+    V1 = H * V2;
+    corners.left_bottom.x = v1[0]/ v1[2];
+    corners.left_bottom.y = v1[1] / v1[2];
+
+    //右上角(src.cols,0,1)
+    v2[0] = src.cols;
+    v2[1] = 0;
+    v2[2] = 1;
+    V2 = cv::Mat(3, 1, CV_64FC1, v2);  //列向量
+    V1 = cv::Mat(3, 1, CV_64FC1, v1);  //列向量
+    V1 = H * V2;
+    corners.right_top.x = v1[0] / v1[2];
+    corners.right_top.y = v1[1] / v1[2];
+
+    //右下角(src.cols,src.rows,1)
+    v2[0] = src.cols;
+    v2[1] = src.rows;
+    v2[2] = 1;
+    V2 = cv::Mat(3, 1, CV_64FC1, v2);  //列向量
+    V1 = cv::Mat(3, 1, CV_64FC1, v1);  //列向量
+    V1 = H * V2;
+    corners.right_bottom.x = v1[0] / v1[2];
+    corners.right_bottom.y = v1[1] / v1[2];
+}
+
+//------------------------------------------------------
+//@remark 直接将两张图片拼接会出现断裂，需要进行“混合”过渡
+//@param img1是左边的图像
+//@param trans是右边进行投影之后的图像
+//@param dst是最终配准得到的图像
+//@param corners是右图投影之后四个角的坐标
+static void OptimizeSeam(cv::Mat& img1, cv::Mat& trans, cv::Mat& dst,const Corners& corners)
+{
+
+    int start = MIN(corners.left_top.x, corners.left_bottom.x);//开始位置，即重叠区域的左边界
+    double processWidth = img1.cols - start;//重叠区域的宽度
+    int rows = dst.rows;
+    int cols = img1.cols; //注意，是列数*通道数
+    double alpha = 1;//img1中像素的权重
+    for (int i = 0; i < rows; i++)
+    {
+        uchar* p = img1.ptr<uchar>(i);  //获取第i行的首地址
+        uchar* t = trans.ptr<uchar>(i);
+        uchar* d = dst.ptr<uchar>(i);
+        for (int j = start; j < cols; j++)
+        {
+            //如果遇到图像trans中无像素的黑点，则完全拷贝img1中的数据
+            if (t[j * 3] == 0 && t[j * 3 + 1] == 0 && t[j * 3 + 2] == 0)
+            {
+                alpha = 1;
+            }
+            else
+            {
+                //img1中像素的权重，与当前处理点距重叠区域左边界的距离成正比，实验证明，这种方法确实好
+                alpha = (processWidth - (j - start)) / processWidth;
+            }
+
+            d[j * 3] = p[j * 3] * alpha + t[j * 3] * (1 - alpha);
+            d[j * 3 + 1] = p[j * 3 + 1] * alpha + t[j * 3 + 1] * (1 - alpha);
+            d[j * 3 + 2] = p[j * 3 + 2] * alpha + t[j * 3 + 2] * (1 - alpha);
+            }
+        }
+}
 
 //------------------------------------------------------
 static void _drawKeypoint(cv::Mat& img,const cv::KeyPoint&p, const cv::Scalar& color)
@@ -113,7 +203,7 @@ void Foo::_2nnMatch(cv::InputArray queryDescriptors, cv::InputArray trainDescrip
 
     matches.clear();
     matches.reserve(knnMatches.size());
-    //采用0.8作为阀值 1NN / 2NN < 0.8
+    //一般采用0.8作为阀值 1NN / 2NN < 0.8，这里采取opencv的阈值
     const float minRatio = 1.f / 1.5f;
     for(size_t i = 0; i < knnMatches.size(); i++)
     {
@@ -249,4 +339,83 @@ void Foo::myDrawMatches(const cv::Mat &in, const std::vector<cv::KeyPoint> &keyp
                      color,1,cv::LINE_AA,draw_shift_bits);
         }
     }
+}
+
+//-----------------------------------------------
+void Foo::myStitch(const cv::Mat &left_img, const cv::Mat &right_img, cv::Mat &dst, int method)
+{
+    std::vector<cv::KeyPoint> keypoint1,keypoint2;
+    cv::Mat desc1,desc2;
+    std::vector<cv::DMatch> matches;
+    //detect and compute
+    //这里不采用KNN+ransac的方法，采用FLANN
+    if(method == 1)
+    {
+        //对于ORB算法，我们先将图片转为灰度图做预处理
+        cv::Mat H_left_image,H_right_image;
+        cv::cvtColor(left_img, H_left_image, CV_RGB2GRAY);
+        cv::cvtColor(right_img, H_right_image, CV_RGB2GRAY);
+
+        cv::Ptr<cv::ORB> orb = cv::ORB::create();
+        orb->detectAndCompute(H_left_image,cv::noArray(),keypoint1,desc1);
+        orb->detectAndCompute(H_right_image,cv::noArray(),keypoint2,desc2);
+    }
+    else if(method == 2)
+    {
+        cv::Ptr<cv::xfeatures2d::SIFT> sift = cv::xfeatures2d::SIFT::create();
+        sift->detectAndCompute(left_img,cv::noArray(),keypoint1,desc1);
+        sift->detectAndCompute(right_img,cv::noArray(),keypoint2,desc2);
+    }
+    else if(method == 3)
+    {
+        cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create();
+        surf->detectAndCompute(left_img,cv::noArray(),keypoint1,desc1);
+        surf->detectAndCompute(right_img,cv::noArray(),keypoint2,desc2);
+    }
+    else
+    {
+        dst = cv::Mat();
+        return;
+    }
+    //匹配 采用knn+ransac
+    Foo::_2nnMatch(desc1,desc2,matches);
+    std::vector<char> matchesMask;
+    Foo::ransac(matches,keypoint1,keypoint2,matchesMask);
+
+    //ransac之后的结果点
+    std::vector<cv::Point2f> imagePoints1,imagePoints2;
+
+    //讲道理ransac之后Mask应该不空
+    CV_Assert(!matchesMask.empty());
+    for(size_t m = 0; m < matches.size(); ++m)
+    {
+        if(matchesMask[m])
+        {
+            imagePoints1.push_back(keypoint1[matches[m].queryIdx].pt);
+            imagePoints2.push_back(keypoint2[matches[m].trainIdx].pt);
+        }
+    }
+
+    //获取最佳匹配的单应性矩阵作为投影矩阵
+    cv::Mat homo = cv::findHomography(imagePoints1,imagePoints2,CV_RANSAC);
+
+    Corners corners;
+    calcNewPosAfterH(homo,right_img,corners);
+
+    //图像配准
+    //@param imageTransform是右边图像放射变换之后的结果
+    cv::Mat imageTransform;
+    cv::warpPerspective(right_img,imageTransform,homo,cv::Size(int(std::max(corners.right_top.x,corners.right_bottom.x)),left_img.rows));
+    //创建拼接后的图,需提前计算图的大小
+    int dst_width = imageTransform.cols;  //取最右点的长度为拼接图的长度
+    int dst_height = left_img.rows;
+
+    //Mat dst(dst_height, dst_width, CV_8UC3);
+    dst.create(dst_height, dst_width, CV_8UC3);
+    dst.setTo(0);
+
+    imageTransform.copyTo(dst(cv::Rect(0, 0, imageTransform.cols, imageTransform.rows)));
+    left_img.copyTo(dst(Rect(0, 0, left_img.cols, left_img.rows)));
+
+    OptimizeSeam(left_img,imageTransform,dst,corners);
 }
