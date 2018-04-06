@@ -62,7 +62,7 @@ static void calcNewPosAfterH(const cv::Mat& H, const cv::Mat& src,Corners & corn
 //@param trans是右边进行投影之后的图像
 //@param dst是最终配准得到的图像
 //@param corners是右图投影之后四个角的坐标
-static void OptimizeSeam(cv::Mat& img1, cv::Mat& trans, cv::Mat& dst,const Corners& corners)
+static void OptimizeSeam(const cv::Mat& img1,const cv::Mat& trans,cv::Mat& dst,const Corners& corners)
 {
 
     int start = MIN(corners.left_top.x, corners.left_bottom.x);//开始位置，即重叠区域的左边界
@@ -72,8 +72,8 @@ static void OptimizeSeam(cv::Mat& img1, cv::Mat& trans, cv::Mat& dst,const Corne
     double alpha = 1;//img1中像素的权重
     for (int i = 0; i < rows; i++)
     {
-        uchar* p = img1.ptr<uchar>(i);  //获取第i行的首地址
-        uchar* t = trans.ptr<uchar>(i);
+        const uchar* p = img1.ptr<uchar>(i);  //获取第i行的首地址
+        const uchar* t = trans.ptr<uchar>(i);
         uchar* d = dst.ptr<uchar>(i);
         for (int j = start; j < cols; j++)
         {
@@ -415,7 +415,7 @@ void Foo::myStitch(const cv::Mat &left_img, const cv::Mat &right_img, cv::Mat &d
     dst.setTo(0);
 
     imageTransform.copyTo(dst(cv::Rect(0, 0, imageTransform.cols, imageTransform.rows)));
-    left_img.copyTo(dst(Rect(0, 0, left_img.cols, left_img.rows)));
+    left_img.copyTo(dst(cv::Rect(0, 0, left_img.cols, left_img.rows)));
 
     OptimizeSeam(left_img,imageTransform,dst,corners);
 }

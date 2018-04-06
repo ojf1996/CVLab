@@ -72,6 +72,21 @@ void imageProcesser::matchTest(std::string input1,std::string input2,int type, b
     emit finishMatch(matchImg);
 }
 
+void imageProcesser::stitchTest(std::string input1, std::string input2, int kind)
+{
+    cv::Mat in1,in2,out;
+    QImage stitchImg;
+
+    in1 = cv::imread(input1,-1);
+    in2 = cv::imread(input2,-1);
+
+    Foo::myStitch(in1,in2,out,kind);
+
+    Foo::cvMatToQImage(out,stitchImg);
+
+    emit finishStitch(stitchImg);
+}
+
 //--------------------------------------------
 imageProcesser::~imageProcesser()
 {

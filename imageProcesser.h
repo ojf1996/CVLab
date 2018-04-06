@@ -17,8 +17,10 @@ public:
     ~imageProcesser();
 public slots:
     void matchTest(std::string,std::string,int,bool);
+    void stitchTest(std::string,std::string,int);
 signals:
     void finishMatch(const QImage& out);
+    void finishStitch(const QImage& out);
     void finishDetectPhoto1(const QImage& out);
     void finishDetectPhoto2(const QImage& out);
 };
