@@ -1,0 +1,54 @@
+/*--------------设置图片区域------------*/
+QLabel#PhotoLabel{
+	border-radius: 6px;
+	back : #2F4F4F;
+	border-style : solid;
+	border-width : 1px 1px 1px 1px; 
+	background-color : 
+	
+}
+
+/*--------------设置菜单栏------------*/
+QMenuBar{
+	background-color : #F5F5F5;
+}
+
+/*--------------设置菜单栏元素间隔------------*/
+QMenuBar::item{
+	padding: 2px 16px 2px 16px;
+	margin:2px;
+}
+
+/*--------------设置选中菜单栏的颜色 ------------*/
+QMenuBar::item::selected{
+	background-color : #636363;
+}
+
+/*--------------设置菜单的间隔 ------------*/
+QMenu::item{
+	padding: 8px 32px;
+	margin: 0px 8px;
+}
+/*------------- 选中的菜单内容变色 ---------*/
+QMenu::item::selected{
+	background-color : #2dabf9;
+}
+/*--------------设置图片选择按键------------*/
+QPushButton#PhotoBtn{
+	background-color : #2F4F4F;
+	color: white;
+	border-radius : 5px;
+	width : 40px;
+	height : 20px;
+}
+/*--------------设置图片选择按键颜色------------*/
+QPushButton:hover#PhotoBtn{
+	background-color : #696969;
+}
+QPushButton:pressed#PhotoBtn{
+	background-color : #696969;
+}
+
+
+
+
