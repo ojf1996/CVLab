@@ -16,13 +16,10 @@ public:
     explicit imageProcesser(QObject* parent = nullptr);
     ~imageProcesser();
 public slots:
-    void HomomorphicFiltering(std::string file);
     void ORBTest(std::string,std::string);
 signals:
-    void finishHomomorphicFiletering(const QImage& res);
-    void finishORBDetectInFirstImg(const QImage& out);
-    void finishORDDetectInSecondImg(const QImage& out);
     void finishMatch(const QImage& out);
+    void finishDetectPhoto1(const QImage& out);
 };
 
 #endif // IMAGEPROCESSER_H

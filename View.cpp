@@ -89,6 +89,7 @@ View::View(QWidget *parent) :
     connect(HomomorphicFilteringMenu,SIGNAL(triggered(bool)),this,SLOT(test()));
     connect(this,SIGNAL(ORBTest(std::string,std::string)),processer,SLOT(ORBTest(std::string,std::string)));
     connect(processer,SIGNAL(finishMatch(const QImage&)),this,SLOT(loadResultPhoto(const QImage&)));
+    connect(processer,SIGNAL(finishDetectPhoto1(const QImage&)),this,SLOT(updatePhoto1(const QImage&)));
 }
 //--------------------------------------------------
 void View::loadPhoto1()
@@ -204,6 +205,20 @@ void View::loadResultPhoto(const QImage& res)
     resultBtn->setVisible(true);
     emit showResultPhoto();
 }
+//-----------------------------------------------------
+void View::updatePhoto1(const QImage & res)
+{
+    if(res.isNull()){
+        QMessageBox::critical(this,"发生了错误","图片处理失败");
+        resPhoto = QImage();
+        resultBtn->setVisible(false);
+        return;
+    }
+
+    photo1 = res.copy();
+    emit showPhoto1();
+}
+
 //-----------------------------------------------------
 void View::showResultPhoto()
 {
