@@ -102,7 +102,7 @@ static void _drawKeypoint(cv::Mat& img,const cv::KeyPoint&p, const cv::Scalar& c
 
     int radius = cvRound(p.size/2 * draw_multiplier);
 
-    if(p.angle != 1)
+    if(p.angle != -1)
     {
         float srcAngleRad = p.angle*(float)CV_PI/180.f;
         cv::Point orient( cvRound(cos(srcAngleRad)*radius ),
@@ -237,18 +237,19 @@ void Foo::ransac(std::vector<cv::DMatch> &matches, std::vector<cv::KeyPoint> &ke
         std::vector<cv::Point2f> points2;
         cv::KeyPoint::convert(keyPoint2, points2, trainIdxs);
 
-
         H12 = cv::findHomography(cv::Mat(points1), cv::Mat(points2), CV_RANSAC, ransacReprojThreshold);
         matchesMask.clear();
         matchesMask.resize(matches.size());
 
         cv::Mat points1t;
-        cv::perspectiveTransform(cv::Mat(points1), points1t, H12);
-        for (size_t i1 = 0; i1 < points1.size(); i1++)  //保存inliers
-        {
-            if (norm(points2[i1] - points1t.at<cv::Point2f>((int)i1, 0)) <= ransacReprojThreshold) //给内点做标记
+        if(cv::Mat(points1).channels() == H12.cols - 1){
+            cv::perspectiveTransform(cv::Mat(points1), points1t, H12);
+            for (size_t i1 = 0; i1 < points1.size(); i1++)  //保存inliers
             {
-                matchesMask[i1] = 1;
+                if (norm(points2[i1] - points1t.at<cv::Point2f>((int)i1, 0)) <= ransacReprojThreshold) //给内点做标记
+                {
+                    matchesMask[i1] = 1;
+                }
             }
         }
 }
@@ -256,9 +257,22 @@ void Foo::ransac(std::vector<cv::DMatch> &matches, std::vector<cv::KeyPoint> &ke
 void Foo::myDrawKeypoint(const cv::Mat& img, const std::vector<cv::KeyPoint>& keypoints,cv::Mat& outImage, const cv::Scalar& _color)
 {
     //先将原图
-    int imgtype = img.type(),imgcn = CV_MAT_CN(imgtype);
-    if(imgcn != 1)
-        cv::cvtColor(img,outImage,CV_BGR2GRAY);
+    int imgtype = img.type();
+    if(CV_MAT_CN(imgtype) != 1)
+    {
+        if(CV_MAT_CN(imgtype) == 3)
+        {
+            cv::cvtColor(img,outImage,CV_BGR2GRAY);
+        }
+        else if(CV_MAT_CN(imgtype) == 4)
+        {
+            cv::cvtColor(img,outImage,CV_BGRA2GRAY);
+        }
+        else
+        {
+            CV_Assert(CV_MAT_CN(imgtype) == 1);
+        }
+    }
     else
         img.copyTo(outImage);
 
@@ -284,7 +298,7 @@ void Foo::myDrawMatches(const cv::Mat &in, const std::vector<cv::KeyPoint> &keyp
     cv::Scalar color = isRandMatchColor ? cv::Scalar( rng(256), rng(256), rng(256) ) : matchColor;
 
     //判断mask大小应该与matches的大小一致
-    if( matchesMask.empty() || matchesMask.size() != matches1to2.size() )
+    if( matchesMask.size() != matches1to2.size() && !matchesMask.empty() )
         return;
 
     cv::Size outSize = cv::Size(in.size().width + in2.size().width,
@@ -350,19 +364,19 @@ void Foo::myStitch(const cv::Mat &left_img, const cv::Mat &right_img, cv::Mat &d
     //detect and compute
     if(method == 1)
     {
-        cv::Ptr<cv::ORB> orb = cv::ORB::create();
+        cv::Ptr<cv::ORB> orb = cv::ORB::create(3000);
         orb->detectAndCompute(left_img,cv::Mat(),keypoint2,desc2);
         orb->detectAndCompute(right_img,cv::Mat(),keypoint1,desc1);
     }
     else if(method == 2)
     {
-        cv::Ptr<cv::xfeatures2d::SIFT> sift = cv::xfeatures2d::SIFT::create();
+        cv::Ptr<cv::xfeatures2d::SIFT> sift = cv::xfeatures2d::SIFT::create(3000);
         sift->detectAndCompute(left_img,cv::Mat(),keypoint2,desc2);
         sift->detectAndCompute(right_img,cv::Mat(),keypoint1,desc1);
     }
     else if(method == 3)
     {
-        cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create();
+        cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(3000);
         surf->detectAndCompute(left_img,cv::Mat(),keypoint2,desc2);
         surf->detectAndCompute(right_img,cv::Mat(),keypoint1,desc1);
     }

@@ -1,6 +1,7 @@
 ﻿#include <QImage>
 #include "imageProcesser.h"
 #include "foo.h"
+#include "ORBextractor.h"
 #include <QDebug>
 
 //---------------------------------------
@@ -20,14 +21,14 @@ void imageProcesser::matchTest(std::string input1,std::string input2,int type, b
     std::vector<cv::KeyPoint> key1, key2;
     cv::Mat desc1,desc2;
 
-    cv::Ptr<cv::ORB> orb = cv::ORB::create();
-    cv::Ptr<cv::xfeatures2d::SIFT> sift = cv::xfeatures2d::SIFT::create();
-    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create();
-
+    cv::Ptr<cv::ORB> orb = cv::ORB::create(3000);
+    cv::Ptr<cv::xfeatures2d::SIFT> sift = cv::xfeatures2d::SIFT::create(3000);
+    cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create(3000);
+    ORBextractor orb2;
     switch (type) {
         case 1:
             orb->detectAndCompute(in1,cv::Mat(),key1,desc1);
-            orb->detectAndCompute(in2,cv::Mat(),key2,desc2);
+            orb->detectAndCompute( in2,cv::Mat(),key2,desc2);
             break;
         case 2:
             sift->detectAndCompute(in1,cv::Mat(),key1,desc1);
@@ -36,6 +37,12 @@ void imageProcesser::matchTest(std::string input1,std::string input2,int type, b
         case 3:
             surf->detectAndCompute(in1,cv::Mat(),key1,desc1);
             surf->detectAndCompute(in2,cv::Mat(),key2,desc2);
+            break;
+        case 4:
+            in1 = cv::imread(input1,cv::IMREAD_GRAYSCALE);
+            in2 = cv::imread(input2,cv::IMREAD_GRAYSCALE);
+            orb2(in1,cv::Mat(),key1,desc1);
+            orb2(in2,cv::Mat(),key2,desc2);
             break;
         default:
             emit finishMatch(QImage());
@@ -62,8 +69,8 @@ void imageProcesser::matchTest(std::string input1,std::string input2,int type, b
     }
 
     std::vector<char> matchesMask;
-
-    Foo::ransac(matches,key1,key2,matchesMask);
+    if(!key1.empty() && !key2.empty()&&!matches.empty())
+        Foo::ransac(matches,key1,key2,matchesMask);
 
     Foo::myDrawMatches(in1,key1,in2,key2,matches,out,matchesMask);
 

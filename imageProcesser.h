@@ -16,7 +16,7 @@ public:
     explicit imageProcesser(QObject* parent = nullptr);
     ~imageProcesser();
 public slots:
-    void matchTest(std::string,std::string,int,bool);
+    void matchTest(std::string,std::string,int=1,bool=true);
     void stitchTest(std::string,std::string,int);
 signals:
     void finishMatch(const QImage& out);
