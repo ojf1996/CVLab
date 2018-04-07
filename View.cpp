@@ -47,6 +47,8 @@ View::View(QWidget *parent) :
     OpMenu->addMenu(SIFTMenu);
     SURFMenu = new QMenu(tr("SURF特征提取与匹配"),this);
     OpMenu->addMenu(SURFMenu);
+    StitchMenu = new QMenu(tr("图像拼接"),this);
+    OpMenu->addMenu(StitchMenu);
 
     //添加操作
     ORBWith2NN = new QAction(tr("进行野点剔除"),this);
@@ -63,6 +65,13 @@ View::View(QWidget *parent) :
     SURFWithout2NN = new QAction(tr("不进行野点剔除"),this);
     SURFMenu->addAction(SURFWith2NN);
     SURFMenu->addAction(SURFWithout2NN);
+
+    StitchWithORB = new QAction(tr("ORB"),this);
+    StitchMenu->addAction(StitchWithORB);
+    StitchWithSIFT = new QAction(tr("SIFT"),this);
+    StitchMenu->addAction(StitchWithSIFT);
+    StitchWithSURF = new QAction(tr("SURF"),this);
+    StitchMenu->addAction(StitchWithSURF);
 
     //中央布局
     QWidget* temp = new QWidget();
@@ -118,9 +127,14 @@ View::View(QWidget *parent) :
     connect(SIFTWithout2NN,SIGNAL(triggered(bool)),this,SLOT(startSIFTWithout2NN()));
     connect(SURFWith2NN,SIGNAL(triggered(bool)),this,SLOT(startSURFWith2NN()));
     connect(SURFWithout2NN,SIGNAL(triggered(bool)),this,SLOT(startSURFWithout2NN()));
+    connect(StitchWithORB,SIGNAL(triggered(bool)),this,SLOT(startStitchWithORB()));
+    connect(StitchWithSIFT,SIGNAL(triggered(bool)),this,SLOT(startStitchWithSIFT()));
+    connect(StitchWithSURF,SIGNAL(triggered(bool)),this,SLOT(startStitchWithSURF()));
     //进行传递
     connect(this,SIGNAL(startMatch(std::string,std::string,int,bool)),processer,SLOT(matchTest(std::string,std::string,int,bool)));
+    connect(this,SIGNAL(startStitch(std::string,std::string,int)),processer,SLOT(stitchTest(std::string,std::string,int)));
     connect(processer,SIGNAL(finishMatch(const QImage&)),this,SLOT(loadResultPhoto(const QImage&)));
+    connect(processer,SIGNAL(finishStitch(const QImage&)),this,SLOT(loadResultPhoto(const QImage&)));
     connect(processer,SIGNAL(finishDetectPhoto1(const QImage&)),this,SLOT(updatePhoto1(const QImage&)));
     connect(processer,SIGNAL(finishDetectPhoto2(const QImage&)),this,SLOT(updatePhoto2(const QImage&)));
 }
@@ -231,7 +245,6 @@ View::~View()
 
 void View::paintEvent(QPaintEvent* event)
 {
-    qDebug()<<_width<<"  "<<_height<<"\n";
     _width =int(size().width() / 1.2);
     _height =int(size().height() / 1.2);
     Photo->resize(QSize(_width,_height));
@@ -343,4 +356,37 @@ void View::startSURFWithout2NN()
         return;
     }
     emit startMatch(file1.toStdString(),file2.toStdString(),3,false);
+}
+
+void View::startStitchWithORB()
+{
+    QMessageBox::warning(this,"注意","请确保两张输入图片第一张为左图，后一张为右图");
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startStitch(file1.toStdString(),file2.toStdString(),1);
+}
+
+void View::startStitchWithSIFT()
+{
+    QMessageBox::warning(this,"注意","请确保两张输入图片第一张为左图，后一张为右图");
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startStitch(file1.toStdString(),file2.toStdString(),2);
+}
+
+void View::startStitchWithSURF()
+{
+    QMessageBox::warning(this,"注意","请确保两张输入图片第一张为左图，后一张为右图");
+    if(file1.isNull() || file2.isNull())
+    {
+        QMessageBox::critical(this,"发生了错误","请确保两张输入图片");
+        return;
+    }
+    emit startStitch(file1.toStdString(),file2.toStdString(),3);
 }

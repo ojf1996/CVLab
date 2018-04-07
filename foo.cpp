@@ -18,7 +18,7 @@ struct Corners
 static void calcNewPosAfterH(const cv::Mat& H, const cv::Mat& src,Corners & corners)
 {
     double v2[] = {0,0,1};//原图左上角，注意由于H是3*3矩阵，所以这里采用齐次坐标，第三位1表示是点，若为0说明是向量
-    double v1[3] = {0}; //目标坐标
+    double v1[3]; //目标坐标
     cv::Mat V2 = cv::Mat(3,1,CV_64FC1,v2);// 转为Mat，方便计算
     cv::Mat V1 = cv::Mat(3,1,CV_64FC1,v1);
 
@@ -27,7 +27,7 @@ static void calcNewPosAfterH(const cv::Mat& H, const cv::Mat& src,Corners & corn
     corners.left_top.y = v1[1] / v1[2];
     //计算左下角（0，src.cols,1）
     v2[0] = 0;
-    v2[1] = src.cols;
+    v2[1] = src.rows;
     v2[2] = 1;
     V2 = cv::Mat(3,1,CV_64FC1,v2);// 转为Mat，方便计算
     V1 = cv::Mat(3,1,CV_64FC1,v1);
@@ -239,7 +239,9 @@ void Foo::ransac(std::vector<cv::DMatch> &matches, std::vector<cv::KeyPoint> &ke
 
 
         H12 = cv::findHomography(cv::Mat(points1), cv::Mat(points2), CV_RANSAC, ransacReprojThreshold);
-        matchesMask.reserve(matches.size());
+        matchesMask.clear();
+        matchesMask.resize(matches.size());
+
         cv::Mat points1t;
         cv::perspectiveTransform(cv::Mat(points1), points1t, H12);
         for (size_t i1 = 0; i1 < points1.size(); i1++)  //保存inliers
@@ -281,12 +283,10 @@ void Foo::myDrawMatches(const cv::Mat &in, const std::vector<cv::KeyPoint> &keyp
     bool isRandMatchColor = matchColor == cv::Scalar::all(-1);
     cv::Scalar color = isRandMatchColor ? cv::Scalar( rng(256), rng(256), rng(256) ) : matchColor;
 
-    qDebug()<<"=======================";
     //判断mask大小应该与matches的大小一致
-    if( !matchesMask.empty() && matchesMask.size() == matches1to2.size() )
+    if( matchesMask.empty() || matchesMask.size() != matches1to2.size() )
         return;
 
-    qDebug()<<"\n=======================";
     cv::Size outSize = cv::Size(in.size().width + in2.size().width,
                                 MAX(in.size().height,in2.size().height));
     //两张图片整合
@@ -348,29 +348,23 @@ void Foo::myStitch(const cv::Mat &left_img, const cv::Mat &right_img, cv::Mat &d
     cv::Mat desc1,desc2;
     std::vector<cv::DMatch> matches;
     //detect and compute
-    //这里不采用KNN+ransac的方法，采用FLANN
     if(method == 1)
     {
-        //对于ORB算法，我们先将图片转为灰度图做预处理
-        cv::Mat H_left_image,H_right_image;
-        cv::cvtColor(left_img, H_left_image, CV_RGB2GRAY);
-        cv::cvtColor(right_img, H_right_image, CV_RGB2GRAY);
-
         cv::Ptr<cv::ORB> orb = cv::ORB::create();
-        orb->detectAndCompute(H_left_image,cv::noArray(),keypoint1,desc1);
-        orb->detectAndCompute(H_right_image,cv::noArray(),keypoint2,desc2);
+        orb->detectAndCompute(left_img,cv::Mat(),keypoint2,desc2);
+        orb->detectAndCompute(right_img,cv::Mat(),keypoint1,desc1);
     }
     else if(method == 2)
     {
         cv::Ptr<cv::xfeatures2d::SIFT> sift = cv::xfeatures2d::SIFT::create();
-        sift->detectAndCompute(left_img,cv::noArray(),keypoint1,desc1);
-        sift->detectAndCompute(right_img,cv::noArray(),keypoint2,desc2);
+        sift->detectAndCompute(left_img,cv::Mat(),keypoint2,desc2);
+        sift->detectAndCompute(right_img,cv::Mat(),keypoint1,desc1);
     }
     else if(method == 3)
     {
         cv::Ptr<cv::xfeatures2d::SURF> surf = cv::xfeatures2d::SURF::create();
-        surf->detectAndCompute(left_img,cv::noArray(),keypoint1,desc1);
-        surf->detectAndCompute(right_img,cv::noArray(),keypoint2,desc2);
+        surf->detectAndCompute(left_img,cv::Mat(),keypoint2,desc2);
+        surf->detectAndCompute(right_img,cv::Mat(),keypoint1,desc1);
     }
     else
     {
@@ -379,14 +373,12 @@ void Foo::myStitch(const cv::Mat &left_img, const cv::Mat &right_img, cv::Mat &d
     }
     //匹配 采用knn+ransac
     Foo::_2nnMatch(desc1,desc2,matches);
-    std::vector<char> matchesMask;
-    Foo::ransac(matches,keypoint1,keypoint2,matchesMask);
 
+    std::vector<char> matchesMask;
+    matchesMask.clear();
+    Foo::ransac(matches,keypoint1,keypoint2,matchesMask);
     //ransac之后的结果点
     std::vector<cv::Point2f> imagePoints1,imagePoints2;
-
-    //讲道理ransac之后Mask应该不空
-    CV_Assert(!matchesMask.empty());
     for(size_t m = 0; m < matches.size(); ++m)
     {
         if(matchesMask[m])
@@ -404,8 +396,10 @@ void Foo::myStitch(const cv::Mat &left_img, const cv::Mat &right_img, cv::Mat &d
 
     //图像配准
     //@param imageTransform是右边图像放射变换之后的结果
+
     cv::Mat imageTransform;
-    cv::warpPerspective(right_img,imageTransform,homo,cv::Size(int(std::max(corners.right_top.x,corners.right_bottom.x)),left_img.rows));
+    cv::warpPerspective(right_img, imageTransform, homo, cv::Size(MAX(corners.right_top.x, corners.right_bottom.x), left_img.rows));
+
     //创建拼接后的图,需提前计算图的大小
     int dst_width = imageTransform.cols;  //取最右点的长度为拼接图的长度
     int dst_height = left_img.rows;
@@ -415,7 +409,9 @@ void Foo::myStitch(const cv::Mat &left_img, const cv::Mat &right_img, cv::Mat &d
     dst.setTo(0);
 
     imageTransform.copyTo(dst(cv::Rect(0, 0, imageTransform.cols, imageTransform.rows)));
+
     left_img.copyTo(dst(cv::Rect(0, 0, left_img.cols, left_img.rows)));
 
     OptimizeSeam(left_img,imageTransform,dst,corners);
+
 }

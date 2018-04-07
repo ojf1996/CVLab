@@ -52,6 +52,10 @@ protected:
     //进行SURF特征检测
     QAction *SURFWithout2NN;
     QAction *SURFWith2NN;
+    //进行图像拼接
+    QAction *StitchWithORB;
+    QAction *StitchWithSIFT;
+    QAction *StitchWithSURF;
 protected:
     //菜单栏
     //文件菜单
@@ -61,6 +65,7 @@ protected:
     QMenu *ORBMenu;
     QMenu *SIFTMenu;
     QMenu *SURFMenu;
+    QMenu *StitchMenu;
     //图片
     QLabel* Photo;
     QPushButton *photo1Btn;
@@ -76,6 +81,7 @@ signals:
     //@param which表明展示某张图片，1表示第一张，如此类推
     void showPhoto(int which);
     void startMatch(std::string, std::string,int kind,bool is2NN);
+    void startStitch(std::string, std::string,int kind);
 
 protected slots:
     //@remark 读取图片
@@ -107,6 +113,11 @@ protected slots:
     void startSIFTWithout2NN();
     void startSURFWith2NN();
     void startSURFWithout2NN();
+
+    //@remark 图像拼接
+    void startStitchWithORB();
+    void startStitchWithSIFT();
+    void startStitchWithSURF();
 };
 
 #endif // VIEW_H
